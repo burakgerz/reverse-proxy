@@ -1,0 +1,51 @@
+services:
+  proxy:
+    build: ./proxy
+    restart: always
+    ports:
+      - 80:80
+      - 443:443
+    labels:
+      - "com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy"
+    volumes:
+      - certs:/etc/nginx/certs:ro,z
+      - vhost.d:/etc/nginx/vhost.d:z
+      - html:/usr/share/nginx/html:z
+      - dhparam:/etc/nginx/dhparam:z
+      - /run/podman/podman.sock:/tmp/docker.sock:z,ro
+    networks:
+      - proxy-tier
+
+  hello:
+    build: ./hello-web
+    expose:
+      - 80
+      - 443
+    environment:
+      - VIRTUAL_HOST=foo.bar.com
+    networks:
+      - proxy-tier
+
+
+  omgwtfssl:
+    image: docker.io/paulczar/omgwtfssl
+    restart: "no"
+    volumes:
+      - certs:/certs
+    environment:
+      - SSL_SUBJECT=foo.bar.com
+      - CA_SUBJECT=my@foo.bar.com
+      - SSL_KEY=/certs/foo.bar.com.key
+      - SSL_CSR=/certs/foo.bar.com.csr
+      - SSL_CERT=/certs/foo.bar.com.crt
+    networks:
+      - proxy-tier
+
+volumes:
+  certs:
+  vhost.d:
+  html:
+  dhparam:
+
+networks:
+  proxy-tier:
